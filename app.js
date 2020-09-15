@@ -1,0 +1,66 @@
+//jshint esversion:6
+require("dotenv").config();
+const express = require("express");
+const bodyParser = require("body-parser");
+const ejs = require("ejs");
+const mongoose = require("mongoose");
+const encrypt = require("mongoose-encryption");
+const app = express();
+app.use(bodyParser.urlencoded({extended:true}));
+app.set("view engine","ejs");
+app.use(express.static("public"));
+mongoose.connect("mongodb://localhost:27017/userDB",{useNewUrlParser:true,useUnifiedTopology:true});
+const userSchema = new mongoose.Schema({
+  email:String,
+  password:String
+});
+userSchema.plugin(encrypt,{secret:process.env.SECRET,encryptedFields:["password"]});
+const User = new mongoose.model("User",userSchema);
+app.get("/",function(req,res){
+  res.render("home");
+});
+app.get("/login",function(req,res){
+  var eror = "";
+  var id = "hiddenError";
+  res.render("login",{error:eror,id:id});
+});
+app.post("/login",function(req,res){
+  const userName = req.body.username;
+  const password = req.body.password;
+  User.findOne({},function(err,foundItem){
+    if(err){
+      console.log(err);
+    }else{
+      if(foundItem.password === password && foundItem.email === userName){
+        res.render("secrets");
+      }else{
+        console.log("no user found");
+        const eror="there was an error";
+        const id = "haha";
+        res.render("login",{error:eror,id:id});
+      }
+    }
+  })
+})
+app.get("/register",function(req,res){
+  res.render("register");
+});
+app.post("/register",function(req,res){
+  const userName = req.body.username;
+  const password = req.body.password;
+  const newUser = new User({
+    email:userName,
+    password:password
+  });
+  newUser.save(function(err){
+    if(err){
+      console.log(err);
+    }else{
+      res.render("secrets");
+    }
+  });
+});
+
+app.listen(3000,function(){
+  console.log("server is up and running at port 3000");
+});
